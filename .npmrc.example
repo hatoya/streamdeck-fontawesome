@@ -1,0 +1,8 @@
+# FontAwesome Pro icons require an npm token.
+# Copy this file to .npmrc and replace YOUR_TOKEN_HERE with your actual token.
+# Get your token at: https://fontawesome.com/account#tokens
+#
+# IMPORTANT: Do NOT commit .npmrc with your real token to version control.
+
+@fortawesome:registry=https://npm.fontawesome.com/
+//npm.fontawesome.com/:_authToken=YOUR_TOKEN_HERE

@@ -1,0 +1,45 @@
+{
+  "name": "streamdeck-fontawesome-iconpack",
+  "version": "1.0.0",
+  "description": "Generate Stream Deck icon packs from FontAwesome icons with full customization",
+  "main": "src/index.js",
+  "bin": {
+    "sd-fa-icons": "./src/cli.js"
+  },
+  "scripts": {
+    "generate": "node src/cli.js",
+    "generate:free": "node src/cli.js --style solid --color '#ffffff'",
+    "generate:all-free": "node src/cli.js --style solid,regular,brands --color '#ffffff'",
+    "generate:pro": "node src/cli.js --style solid,regular,light,thin,duotone --pro --color '#ffffff'"
+  },
+  "keywords": [
+    "stream-deck",
+    "elgato",
+    "fontawesome",
+    "icon-pack",
+    "icons"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@elgato/cli": "^1.7.3",
+    "@fortawesome/fontawesome-svg-core": "^6.5.0",
+    "@fortawesome/free-brands-svg-icons": "^6.5.0",
+    "@fortawesome/free-regular-svg-icons": "^6.5.0",
+    "@fortawesome/free-solid-svg-icons": "^6.5.0",
+    "archiver": "^7.0.1",
+    "commander": "^12.0.0",
+    "sharp": "^0.33.0"
+  },
+  "optionalDependencies": {
+    "@fortawesome/pro-duotone-svg-icons": "^6.5.0",
+    "@fortawesome/pro-light-svg-icons": "^6.5.0",
+    "@fortawesome/pro-regular-svg-icons": "^6.5.0",
+    "@fortawesome/pro-solid-svg-icons": "^6.5.0",
+    "@fortawesome/pro-thin-svg-icons": "^6.5.0",
+    "@fortawesome/sharp-light-svg-icons": "^6.5.0",
+    "@fortawesome/sharp-regular-svg-icons": "^6.5.0",
+    "@fortawesome/sharp-solid-svg-icons": "^6.5.0",
+    "@fortawesome/sharp-thin-svg-icons": "^6.5.0"
+  }
+}
