@@ -1,142 +1,142 @@
 # Stream Deck FontAwesome Icon Pack Generator
 
-FontAwesome のアイコンを Stream Deck 用のアイコンパック（`.sdIconPack`）に変換する CLI ツール。
+A CLI tool that converts FontAwesome icons into Stream Deck icon packs (`.sdIconPack`).
 
-## 特徴
+## Features
 
-- FontAwesome 6 の全アイコンに対応（Free + Pro）
-- 144x144px 高解像度・透過背景
-- 色・背景・パディングなど自由にカスタマイズ
-- Duotone アイコンのセカンダリカラー対応
-- キーワードによるフィルタリング・除外
-- 高速な並列レンダリング
+- Supports all FontAwesome 6 icons (Free + Pro)
+- 144x144px high-resolution with transparent backgrounds
+- Fully customizable colors, backgrounds, and padding
+- Duotone secondary color support
+- Keyword-based filtering and exclusion
+- Fast parallel rendering
 
-## セットアップ
+## Setup
 
 ```bash
 cd streamdeck-fontawesome
 npm install
 ```
 
-### Pro アイコンを使う場合
+### Using Pro Icons
 
-1. [FontAwesome](https://fontawesome.com/account#tokens) で npm トークンを取得
-2. `.npmrc` を作成:
+1. Get an npm token from [FontAwesome](https://fontawesome.com/account#tokens)
+2. Create `.npmrc`:
 
 ```bash
 cp .npmrc.example .npmrc
-# .npmrc を編集してトークンを設定
+# Edit .npmrc and set your token
 ```
 
-3. Pro パッケージをインストール:
+3. Install Pro packages:
 
 ```bash
 npm install
 ```
 
-## 使い方
+## Usage
 
-### 基本（Free Solid アイコン・白色・透過背景）
+### Basic (Free Solid icons, white, transparent background)
 
 ```bash
 npm run generate:free
 ```
 
-### 全 Free スタイル
+### All Free Styles
 
 ```bash
 npm run generate:all-free
 ```
 
-### Pro アイコン
+### Pro Icons
 
 ```bash
 npm run generate:pro
 ```
 
-### カスタマイズ例
+### Customization Examples
 
 ```bash
-# 緑色のアイコン
+# Green icons
 node src/cli.js --style solid --color '#00ff88'
 
-# 青背景に白アイコン
+# White icons on blue background
 node src/cli.js --style solid --color '#ffffff' --bg '#228BE6'
 
-# 矢印系アイコンのみ
+# Arrow-related icons only
 node src/cli.js --style solid --filter "arrow,chevron"
 
-# 大きめのパディング
+# Larger padding
 node src/cli.js --style solid --padding 0.3
 
-# SVG 形式で出力
+# SVG output
 node src/cli.js --style solid --format svg
 
-# Dry run（ファイル出力なしで確認）
+# Dry run (preview without writing files)
 node src/cli.js --style solid,regular,brands --dry-run
 ```
 
-### CLI オプション一覧
+### CLI Options
 
-| オプション | 説明 | デフォルト |
+| Option | Description | Default |
 |---|---|---|
-| `-s, --style <styles>` | スタイル（カンマ区切り） | `solid` |
-| `-p, --pro` | Pro パッケージを使用 | `false` |
-| `-c, --color <hex>` | アイコンの色 | `#ffffff` |
-| `-b, --bg <color>` | 背景色（`transparent` 対応） | `transparent` |
-| `--secondary-color <hex>` | Duotone セカンダリカラー | 自動算出 |
-| `--size <px>` | サイズ (px) | `144` |
-| `--padding <ratio>` | パディング比率 (0-0.5) | `0.2` |
-| `-o, --output <dir>` | 出力先ディレクトリ | `./output/fontawesome-iconpack` |
-| `-f, --format <type>` | 出力形式 (`png`/`svg`) | `png` |
-| `--filter <keywords>` | フィルタ（カンマ区切り） | - |
-| `--exclude <keywords>` | 除外（カンマ区切り） | - |
-| `--concurrency <n>` | 並列数 | `20` |
-| `--name <name>` | パック名 | `FA Icon Pack` |
-| `--id <id>` | パック ID（reverse-DNS 形式） | - |
-| `--author <author>` | 作者 | - |
-| `--url <url>` | プロジェクト/プロフィール URL | - |
-| `--description <desc>` | 説明 | 自動生成 |
-| `--dry-run` | ドライラン | `false` |
+| `-s, --style <styles>` | Styles (comma-separated) | `solid` |
+| `-p, --pro` | Use Pro packages | `false` |
+| `-c, --color <hex>` | Icon foreground color | `#ffffff` |
+| `-b, --bg <color>` | Background color (`transparent` supported) | `transparent` |
+| `--secondary-color <hex>` | Duotone secondary color | Auto-calculated |
+| `--size <px>` | Size in pixels | `144` |
+| `--padding <ratio>` | Padding ratio (0-0.5) | `0.2` |
+| `-o, --output <dir>` | Output directory | `./output/fontawesome-iconpack` |
+| `-f, --format <type>` | Output format (`png`/`svg`) | `png` |
+| `--filter <keywords>` | Filter by keywords (comma-separated) | - |
+| `--exclude <keywords>` | Exclude by keywords (comma-separated) | - |
+| `--concurrency <n>` | Parallel rendering concurrency | `20` |
+| `--name <name>` | Pack name | `FA Icons Pack` |
+| `--id <id>` | Pack ID (reverse-DNS format) | - |
+| `--author <author>` | Author | - |
+| `--url <url>` | Project/repository URL | Repository URL |
+| `--description <desc>` | Description | Auto-generated |
+| `--dry-run` | Dry run | `false` |
 
-## 利用可能なスタイル
+## Available Styles
 
 ### Free
 
-- `solid` - Free Solid
-- `regular` - Free Regular
-- `brands` - Brands
+- `solid` — Free Solid
+- `regular` — Free Regular
+- `brands` — Brands
 
-### Pro（要トークン）
+### Pro (requires token)
 
-- `solid` + `--pro` - Pro Solid
-- `regular` + `--pro` - Pro Regular
-- `light` + `--pro` - Pro Light
-- `thin` + `--pro` - Pro Thin
-- `duotone` + `--pro` - Pro Duotone
-- `sharp-solid` - Sharp Solid
-- `sharp-regular` - Sharp Regular
-- `sharp-light` - Sharp Light
-- `sharp-thin` - Sharp Thin
+- `solid` + `--pro` — Pro Solid
+- `regular` + `--pro` — Pro Regular
+- `light` + `--pro` — Pro Light
+- `thin` + `--pro` — Pro Thin
+- `duotone` + `--pro` — Pro Duotone
+- `sharp-solid` — Sharp Solid
+- `sharp-regular` — Sharp Regular
+- `sharp-light` — Sharp Light
+- `sharp-thin` — Sharp Thin
 
-## Icon Pack のインストール
+## Installing the Icon Pack
 
-CLI 実行時に `.streamDeckIconPack` ファイルが自動生成される。
+A `.streamDeckIconPack` file is automatically generated when you run the CLI.
 
 ```bash
-node src/cli.js --style solid --name "FA Icon Pack" --id "com.yourname.fa-icon-pack"
-# → ./output/fa-icon-pack.streamDeckIconPack が生成される
+node src/cli.js --style solid --name "FA Icons Pack" --id "com.yourname.fa-icon-pack"
+# → ./output/fa-icon-pack.streamDeckIconPack is generated
 ```
 
-生成された `.streamDeckIconPack` ファイルをダブルクリックすれば、Stream Deck アプリが自動でインストールする。
+Double-click the generated `.streamDeckIconPack` file to install it in the Stream Deck app.
 
-## 出力
+## Output
 
-CLI を実行すると、以下の 2 つが生成される。
+Running the CLI generates the following:
 
 ```
 output/
-  fontawesome-iconpack/       # 作業用ディレクトリ（.sdIconPack の中身）
+  fontawesome-iconpack/       # Working directory (.sdIconPack contents)
     manifest.json
     icons.json
     icon.png (144x144)
@@ -147,10 +147,10 @@ output/
       arrow-right.png
       arrow-left.png
       ...
-  fa-icon-pack.streamDeckIconPack   # ← インストール用パッケージファイル
+  fa-icon-pack.streamDeckIconPack   # ← Installable package file
 ```
 
-## プログラマティック利用
+## Programmatic Usage
 
 ```javascript
 const { loadIcons, buildPack } = require('./src/index');
@@ -162,13 +162,26 @@ await buildPack(icons, './output/my-pack', {
   size: 144,
   padding: 0.2,
 }, {
-  name: 'FA Icon Pack',
+  name: 'FA Icons Pack',
   id: 'com.yourname.fa-icon-pack',
   author: 'Your Name',
 });
 ```
 
-## ライセンス
+## Releasing as an Extension
 
-このツール自体は MIT ライセンスです。
-FontAwesome のアイコンは [FontAwesome License](https://fontawesome.com/license) に従います。
+When submitting to the Elgato Marketplace, set the `--url` option to your GitHub repository URL:
+
+```bash
+node src/cli.js --style solid,regular,brands \
+  --url "https://github.com/yourname/streamdeck-fontawesome" \
+  --name "FA Icons Pack" \
+  --id "jp.co.argon.fa-icons-pack"
+```
+
+The URL in `manifest.json` should point to the repository so users can find documentation, report issues, and access the source code.
+
+## License
+
+This tool is licensed under the MIT License.
+FontAwesome icons are subject to the [FontAwesome License](https://fontawesome.com/license).

@@ -24,15 +24,15 @@ const { renderIconToPng, renderIconToSvg } = require('./icon-renderer');
  */
 function buildManifest(config, styles = []) {
   return {
-    Name: config.name || 'FA Icon Pack',
+    Name: config.name || 'FA Icons Pack',
     Version: config.version || '1.0.0',
     Description: config.description || 'Icons based on Font Awesome Free for Stream Deck with transparent backgrounds',
-    Author: config.author || '',
-    URL: config.url || '',
+    Author: config.author || 'hatoya',
+    URL: config.url || 'https://github.com/hatoya/streamdeck-fontawesome',
     Icon: 'icon.png',
     License: 'license.txt',
     Tags: config.tags || styles.join(', '),
-    ...(config.id ? { StreamDeckID: config.id } : {}),
+    StreamDeckID: config.id || 'jp.co.argon.fa-icons-pack',
   };
 }
 
@@ -40,19 +40,19 @@ function buildManifest(config, styles = []) {
  * icons.json を生成
  * 各アイコンの name, path, tags を定義
  * path はファイル名のみ（Stream Deck の仕様に準拠）
+ * 複数スタイルの場合はスタイルプレフィックスを付与して衝突を回避
  */
-function buildIconsJson(icons) {
+function buildIconsJson(icons, useStylePrefix = false) {
   return icons.map((icon) => {
-    const tags = [
-      icon.style,
-      icon.prefix,
-      ...icon.name.split('-'),
-    ].filter(Boolean);
-
+    const fileName = useStylePrefix
+      ? `${icon.style}-${icon.name}.png`
+      : `${icon.name}.png`;
+    const displayName = useStylePrefix
+      ? `${icon.name.replace(/-/g, ' ')} (${icon.style})`
+      : icon.name.replace(/-/g, ' ');
     return {
-      path: `${icon.name}.png`,
-      name: icon.name.replace(/-/g, ' '),
-      tags,
+      path: fileName,
+      name: displayName,
     };
   });
 }
@@ -69,6 +69,53 @@ function buildPackIconSvg(color = '#ffffff') {
 }
 
 /**
+ * プレビュー画像を生成（代表アイコンをグリッド配置した PNG）
+ * @param {Array} icons - プレビューに含めるアイコン
+ * @param {string} outputPath - 出力先パス
+ * @param {Object} renderOptions - レンダリングオプション
+ */
+async function generatePreviewImage(icons, outputPath, renderOptions = {}) {
+  const cellSize = 96;
+  const gap = 8;
+  const padding = 16;
+  const cols = Math.min(5, icons.length);
+  const rows = Math.ceil(Math.min(25, icons.length) / cols);
+  const width = padding * 2 + cols * cellSize + (cols - 1) * gap;
+  const height = padding * 2 + rows * cellSize + (rows - 1) * gap;
+
+  // 各アイコンを小さく描画
+  const composites = [];
+  for (let i = 0; i < Math.min(25, icons.length); i++) {
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    const x = padding + col * (cellSize + gap);
+    const y = padding + row * (cellSize + gap);
+
+    try {
+      const pngBuffer = await renderIconToPng(icons[i], {
+        ...renderOptions,
+        size: cellSize,
+        padding: 0.15,
+      });
+      composites.push({ input: pngBuffer, left: x, top: y });
+    } catch {
+      // skip failed icons
+    }
+  }
+
+  // 暗い背景にアイコンを配置
+  const bgSvg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+    <rect width="${width}" height="${height}" rx="12" fill="#1a1a2e"/>
+  </svg>`);
+
+  await sharp(bgSvg)
+    .resize(width, height)
+    .composite(composites)
+    .png()
+    .toFile(outputPath);
+}
+
+/**
  * アイコンパックのディレクトリ構造を生成
  */
 async function buildPack(icons, outputDir, renderOptions = {}, packConfig = {}) {
@@ -77,12 +124,34 @@ async function buildPack(icons, outputDir, renderOptions = {}, packConfig = {}) 
     concurrency = 20,
   } = renderOptions;
 
-  // ディレクトリ作成（icons/ はフラット、サブディレクトリなし）
+  // 既存の出力ディレクトリをクリアしてから再作成
+  if (fs.existsSync(outputDir)) {
+    console.log(`🗑  Cleaning output directory: ${outputDir}`);
+    try {
+      fs.rmSync(outputDir, { recursive: true, force: true });
+    } catch {
+      // rmSync が失敗した場合、icons/ 内の個別ファイルを削除してフォールバック
+      const iconsDir = path.join(outputDir, 'icons');
+      if (fs.existsSync(iconsDir)) {
+        for (const file of fs.readdirSync(iconsDir)) {
+          try { fs.unlinkSync(path.join(iconsDir, file)); } catch {}
+        }
+      }
+    }
+  }
   fs.mkdirSync(outputDir, { recursive: true });
   fs.mkdirSync(path.join(outputDir, 'icons'), { recursive: true });
   fs.mkdirSync(path.join(outputDir, 'previews'), { recursive: true });
 
   const styles = [...new Set(icons.map((i) => i.style))];
+  const useStylePrefix = styles.length > 1;
+
+  // カラーバリアント対応
+  const { colorVariants } = renderOptions;
+  const hasMultipleColors = colorVariants && Object.keys(colorVariants).length > 1;
+  const colorEntries = colorVariants
+    ? Object.entries(colorVariants) // [[name, hex], ...]
+    : [[null, renderOptions.color]]; // 単色の場合
 
   // manifest.json
   const manifest = buildManifest(packConfig, styles);
@@ -96,78 +165,126 @@ async function buildPack(icons, outputDir, renderOptions = {}, packConfig = {}) 
   await sharp(packIconSvg).resize(144, 144).png().toFile(path.join(outputDir, 'icon.png'));
   await sharp(packIconSvg).resize(512, 512).png().toFile(path.join(outputDir, 'cover.png'));
 
-  // license.txt — CC BY 4.0 帰属要件に準拠
-  const licenseText = `This icon pack contains icons derived from Font Awesome Free.
+  // license.txt — CC BY 4.0 / SIL OFL / MIT 帰属要件に準拠
+  const licenseText = `FA Icons Pack for Stream Deck
+==============================
 
-Original Work: Font Awesome Free
-Copyright: (c) Fonticons, Inc. (https://fontawesome.com)
+This icon pack contains icons derived from Font Awesome Free.
+
+Attribution (CC BY 4.0)
+-----------------------
+Icons: Font Awesome Free ${styles.join(', ')}
+Copyright (c) Fonticons, Inc. (https://fontawesome.com)
 License: Creative Commons Attribution 4.0 International (CC BY 4.0)
-         https://creativecommons.org/licenses/by/4.0/
+https://creativecommons.org/licenses/by/4.0/
 
-Modifications: Original SVG icons have been rendered as ${format === 'svg' ? 'standalone SVG files' : 'PNG images (144x144px)'} with custom styling
-(color, padding, background) for use as Stream Deck icon packs.
-
-Font Awesome Free Fonts are licensed under SIL OFL 1.1:
+Font Awesome Free Fonts License (SIL OFL 1.1)
+----------------------------------------------
+Font Awesome Free Fonts are licensed under the SIL Open Font License 1.1.
 https://scripts.sil.org/OFL
 
-Font Awesome Free Code is licensed under MIT License:
+Font Awesome Free Code License (MIT)
+-------------------------------------
+Font Awesome Free Code is licensed under the MIT License.
 https://opensource.org/licenses/MIT
 
-For full license details, visit: https://fontawesome.com/license/free
+Modifications
+-------------
+Original SVG icon definitions from Font Awesome Free npm packages have been
+rendered as ${format === 'svg' ? 'standalone SVG files' : 'PNG images (144x144px, transparent background)'} with custom styling
+(foreground color, padding) for use as a Stream Deck icon pack.
+
+Icon Pack Author: ${packConfig.author || 'hatoya'}
+Icon Pack URL: ${packConfig.url || 'https://github.com/hatoya/streamdeck-fontawesome'}
+
+For full Font Awesome license details, visit:
+https://fontawesome.com/license/free
 `;
   fs.writeFileSync(path.join(outputDir, 'license.txt'), licenseText);
 
-  // アイコンを並列でレンダリング
-  console.log(`\n🎨 Rendering ${icons.length} icons (concurrency: ${concurrency})...`);
+  // プレビュー画像を生成（代表アイコンをグリッド配置）
+  const previewIcons = icons.slice(0, Math.min(25, icons.length)); // 最大5x5グリッド
+  if (previewIcons.length > 0) {
+    console.log(`🖼  Generating preview image (${previewIcons.length} sample icons)...`);
+    const previewPath = path.join(outputDir, 'previews', 'preview.png');
+    await generatePreviewImage(previewIcons, previewPath, renderOptions);
+  }
+
+  // レンダリング総数を計算
+  const totalRenders = icons.length * colorEntries.length;
+  console.log(`\n🎨 Rendering ${icons.length} icons × ${colorEntries.length} color(s) = ${totalRenders} files (concurrency: ${concurrency})...`);
+  if (hasMultipleColors) {
+    console.log(`   Colors: ${colorEntries.map(([n, h]) => `${n}(${h})`).join(', ')}`);
+  }
 
   const iconsJsonEntries = [];
   let completed = 0;
-  const total = icons.length;
   const startTime = Date.now();
 
-  // バッチ処理
-  for (let i = 0; i < icons.length; i += concurrency) {
-    const batch = icons.slice(i, i + concurrency);
-    await Promise.all(
-      batch.map(async (icon) => {
-        const ext = format === 'svg' ? 'svg' : 'png';
-        // フラット配置: icons/{name}.{ext}
-        const fileName = `${icon.name}.${ext}`;
-        const absPath = path.join(outputDir, 'icons', fileName);
+  // カラーバリアントごとにアイコンをレンダリング
+  for (const [colorName, colorHex] of colorEntries) {
+    const colorRenderOptions = { ...renderOptions, color: colorHex };
 
-        try {
-          if (format === 'svg') {
-            const svg = renderIconToSvg(icon, renderOptions);
-            fs.writeFileSync(absPath, svg);
+    // バッチ処理
+    for (let i = 0; i < icons.length; i += concurrency) {
+      const batch = icons.slice(i, i + concurrency);
+      await Promise.all(
+        batch.map(async (icon) => {
+          const ext = format === 'svg' ? 'svg' : 'png';
+
+          // ファイル名生成: {color}-{style}-{name}.{ext}
+          let fileName;
+          if (hasMultipleColors && useStylePrefix) {
+            fileName = `${colorName}-${icon.style}-${icon.name}.${ext}`;
+          } else if (hasMultipleColors) {
+            fileName = `${colorName}-${icon.name}.${ext}`;
+          } else if (useStylePrefix) {
+            fileName = `${icon.style}-${icon.name}.${ext}`;
           } else {
-            const pngBuffer = await renderIconToPng(icon, renderOptions);
-            fs.writeFileSync(absPath, pngBuffer);
+            fileName = `${icon.name}.${ext}`;
           }
 
-          // タグ生成
-          const tags = [
-            icon.style,
-            icon.prefix,
-            ...icon.name.split('-'),
-          ].filter(Boolean);
+          const absPath = path.join(outputDir, 'icons', fileName);
 
-          iconsJsonEntries.push({
-            path: fileName,
-            name: icon.name.replace(/-/g, ' '),
-            tags,
-          });
+          try {
+            if (format === 'svg') {
+              const svg = renderIconToSvg(icon, colorRenderOptions);
+              fs.writeFileSync(absPath, svg);
+            } else {
+              const pngBuffer = await renderIconToPng(icon, colorRenderOptions);
+              fs.writeFileSync(absPath, pngBuffer);
+            }
 
-          completed++;
-          if (completed % 100 === 0 || completed === total) {
-            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-            const pct = ((completed / total) * 100).toFixed(0);
-            process.stdout.write(`\r   ${completed}/${total} (${pct}%) - ${elapsed}s`);
+            // 表示名生成
+            const baseName = icon.name.replace(/-/g, ' ');
+            let displayName;
+            if (hasMultipleColors && useStylePrefix) {
+              displayName = `${baseName} (${icon.style}, ${colorName})`;
+            } else if (hasMultipleColors) {
+              displayName = `${baseName} (${colorName})`;
+            } else if (useStylePrefix) {
+              displayName = `${baseName} (${icon.style})`;
+            } else {
+              displayName = baseName;
+            }
+
+            iconsJsonEntries.push({
+              path: fileName,
+              name: displayName,
+            });
+
+            completed++;
+            if (completed % 200 === 0 || completed === totalRenders) {
+              const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+              const pct = ((completed / totalRenders) * 100).toFixed(0);
+              process.stdout.write(`\r   ${completed}/${totalRenders} (${pct}%) - ${elapsed}s`);
+            }
+          } catch (err) {
+            console.error(`\n   ❌ Failed to render ${icon.name} (${icon.style}${colorName ? ', ' + colorName : ''}): ${err.message}`);
           }
-        } catch (err) {
-          console.error(`\n   ❌ Failed to render ${icon.name} (${icon.style}): ${err.message}`);
-        }
-      })
-    );
+        })
+      );
+    }
   }
 
   console.log(''); // 改行
@@ -183,6 +300,9 @@ For full license details, visit: https://fontawesome.com/license/free
   console.log(`\n✅ Icon pack generated: ${outputDir}`);
   console.log(`   ${iconsJsonEntries.length} icons in ${elapsed}s`);
   console.log(`   Styles: ${styles.join(', ')}`);
+  if (hasMultipleColors) {
+    console.log(`   Colors: ${colorEntries.map(([n]) => n).join(', ')}`);
+  }
 
   return {
     outputDir,
